@@ -1,0 +1,11 @@
+# 大馬油價小紅書機器人 — Termux Cron 排程
+# 
+# 部署方法 (在 Termux 中執行):
+#   pkg install cronie termux-services
+#   sv-enable crond
+#   crontab /data/data/com.termux/files/home/malaysia-fuel-bot/crontab.txt
+#   crontab -l  (確認寫入成功)
+#
+# 每週三早上 9:00 (GMT+8) 自動生成並保存文案
+
+0 9 * * 3 cd ~/malaysia-fuel-bot && node index.js >> ~/malaysia-fuel-bot/logs/cron.log 2>&1

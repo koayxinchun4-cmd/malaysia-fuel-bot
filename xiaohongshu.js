@@ -15,8 +15,8 @@ async function generateXiaohongshuContent(topic, content) {
   const diesel_p  = extract("西馬");
   const diesel_em = extract("東馬");
 
-  // 判斷價格變動趨勢（簡單比較，這裡示範格式）
-  return `🇲🇾 大馬車主注意！本週油價出爐了！
+  return {
+    text: `🇲🇾 大馬車主注意！本週油價出爐了！
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -43,7 +43,12 @@ async function generateXiaohongshuContent(topic, content) {
 #malaysia #petrolprice #penang #kl #johor #sarawak
 #省錢攻略 #車主日常 #小紅書馬來西亞
 
-🎯 轉發給你身邊每個開車的朋友！」`;
+🎯 轉發給你身邊每個開車的朋友！」`,
+    // metadata for publishing
+    title: "🇲🇾 大馬每週油價更新",
+    tags: ["馬來西亞", "大馬油價", "RON95", "RON97", "malaysia", "petrolprice"],
+    rednoteId: "8482347273"
+  };
 }
 
 module.exports = { generateXiaohongshuContent };

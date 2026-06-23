@@ -1,7 +1,12 @@
 const { generateXiaohongshuContent } = require('./xiaohongshu');
+const fs = require('fs');
+const path = require('path');
 
 // ========== 真實油價爬蟲（零 API Key / 零護照）==========
 // 來源：setel.com（Petronas 官方，固定 URL）→ bitauto.my → 內建預設值
+
+const OUTPUT_DIR = path.join(__dirname, "output");
+const REDNOTE_ID = "8482347273";
 
 const FALLBACK = {
   ron95_sub: "1.99", ron95_unsub: "3.72",
@@ -13,7 +18,6 @@ async function fetchFromSetel() {
   const html = await res.text();
   const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
-  // Peninsular Malaysia 區塊
   const penBlock = text.match(/Peninsular Malaysia([\s\S]{0,1000}?)Sabah/i);
   const target = penBlock ? penBlock[0] : text;
 
@@ -86,14 +90,31 @@ async function startBot() {
   const fuelData = await fetchMalaysiaFuelPrices();
 
   try {
-    const postResult = await generateXiaohongshuContent(fuelData.topic, fuelData.content);
+    const result = await generateXiaohongshuContent(fuelData.topic, fuelData.content);
+    const postText = result.text;
+
     console.log("\n====== 100% 全自動生成結果 ======");
-    console.log(postResult);
+    console.log(postText);
+
+    // 保存到 output/ 目錄，方便手動複製到小紅書
+    if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    const filename = `xiaohongshu_${new Date().toISOString().slice(0, 10)}.txt`;
+    const filepath = path.join(OUTPUT_DIR, filename);
+    fs.writeFileSync(filepath, postText, "utf-8");
+    console.log(`\n📁 文案已保存: ${filepath}`);
+
+    // 小紅書發布資訊（無公開 API，需手動複製）
+    console.log(`\n📱 小紅書發布指引:`);
+    console.log(`   帳號 ID: ${REDNOTE_ID}`);
+    console.log(`   1. 打開小紅書 App → 點 + 發布`);
+    console.log(`   2. 複製上方文案內容貼入`);
+    console.log(`   3. 加入標籤: ${result.tags.join(" ")}`);
+    console.log(`   4. 確認後發布 ✅`);
   } catch (error) {
     console.log("\n====== 100% 全自動生成結果 ======");
     console.log("## 🇲🇾 大馬綜合情報導覽總部");
     console.log("### 💡 AI 生成的小紅書貼文");
-    console.log("⚠️ AI 貼文生成失敗");
+    console.log("⚠️ AI 貼文生成失敗:", error.message);
   }
 }
 
