@@ -1,12 +1,17 @@
 const { generateXiaohongshuContent } = require('./xiaohongshu');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
 // ========== 真實油價爬蟲（零 API Key / 零護照）==========
 // 來源：setel.com（Petronas 官方，固定 URL）→ bitauto.my → 內建預設值
 
 const OUTPUT_DIR = path.join(__dirname, "output");
 const REDNOTE_ID = "8482347273";
+const LLAMA_SERVER_URL = "http://localhost:8080";
+const LLAMA_BIN = path.join(process.env.HOME, "llama.cpp/llama-b9771/llama-server");
+const LLAMA_LIB = path.join(process.env.HOME, "llama.cpp/llama-b9771");
+const LLAMA_MODEL = path.join(process.env.HOME, "llama.cpp/qwen2.5-1.5b-instruct-q4_k_m.gguf");
 
 const FALLBACK = {
   ron95_sub: "1.99", ron95_unsub: "3.72",
@@ -85,8 +90,83 @@ async function fetchMalaysiaFuelPrices() {
   return { success: !!prices && (!!p.ron95_unsub || !!p.ron97), topic: "馬來西亞每週最新油價更新", content };
 }
 
+// ========== 自動啟動本地 llama.cpp server ==========
+async function ensureLlamaServer() {
+  // 先檢查 server 是否已在運行 / Check if server already running
+  try {
+    const check = await fetch(`${LLAMA_SERVER_URL}/health`, { signal: AbortSignal.timeout(2000) });
+    if (check.ok) {
+      console.log("✅ llama server 已在運行 / already running");
+      return;
+    }
+  } catch (_) { /* server not running, start it */ }
+
+  // 檢查執行檔和模型是否存在
+  if (!fs.existsSync(LLAMA_BIN)) {
+    console.log("⚠️ llama-server 不存在，跳過 / binary not found, skipping");
+    return;
+  }
+  if (!fs.existsSync(LLAMA_MODEL)) {
+    console.log("⚠️ 模型檔案不存在，跳過 / model file not found, skipping");
+    return;
+  }
+
+  console.log("🔄 啟動本地 llama server... / Starting local llama server...");
+
+  const server = spawn(LLAMA_BIN, [
+    "-m", LLAMA_MODEL,
+    "--host", "0.0.0.0",
+    "--port", "8080",
+    "-ngl", "0"
+  ], {
+    cwd: LLAMA_LIB,
+    env: { ...process.env, LD_LIBRARY_PATH: LLAMA_LIB },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  // 等待 server ready / Wait for server to be ready
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.log("⚠️ server 啟動超時，繼續使用模板 / startup timeout, using template");
+      resolve();
+    }, 60000);
+
+    server.stdout.on("data", (data) => {
+      const text = data.toString();
+      if (text.includes("server is listening")) {
+        clearTimeout(timeout);
+        console.log("✅ llama server 已啟動 / server started");
+        resolve();
+      }
+    });
+
+    server.stderr.on("data", (data) => {
+      // llama.cpp logs to stderr, ignore
+    });
+
+    server.on("error", (err) => {
+      clearTimeout(timeout);
+      console.log("⚠️ 無法啟動 server:", err.message);
+      resolve();
+    });
+
+    server.on("exit", (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) console.log(`⚠️ server 異常退出 / crashed (code ${code})`);
+      resolve();
+    });
+
+    // 不等待 server 結束，放背景繼續跑 / Keep server running in background
+    server.unref();
+  });
+}
+
 async function startBot() {
-  console.log("Core starting...");
+  console.log("Bot starting...");
+
+  // 自動啟動本地 AI server（若尚未運行）
+  await ensureLlamaServer();
+
   const fuelData = await fetchMalaysiaFuelPrices();
 
   try {
