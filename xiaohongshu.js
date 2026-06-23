@@ -5,33 +5,20 @@
 // ============================================================
 
 const LLAMA_SERVER_URL = "http://localhost:8080";  // Termux llama.cpp server
-const LLAMA_TIMEOUT = 30000;                       // 30 秒超時
+const LLAMA_TIMEOUT = 300000;                      // 5 分鐘超時（手機跑 1.5B 模型較慢）
 
 /**
  * 呼叫本地 llama.cpp server 生成小紅書文案
- * Calls local llama.cpp server to generate RedNote post
  * @returns {object|null} {text, source: "local"} or null
  */
 async function generateWithLocalModel(prices) {
   const now = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
 
-  const prompt = `你是大馬油價小紅書博主。請根據以下油價數據，生成一篇繁體中文小紅書貼文。
-You are a Malaysia fuel price RedNote blogger. Generate a post in Traditional Chinese.
-
-油價數據 / Prices:
-- RON95 (補貼Budi95): ${prices.budi95}
-- RON95 (無補貼): ${prices.ron95}
-- RON97: ${prices.ron97}
-- Diesel 西馬: ${prices.diesel_p}
-- Diesel 東馬: ${prices.diesel_em}
-
-要求 / Requirements:
-- 語氣活潑 / Lively tone
-- 包含 Emoji / Include emojis
-- 結尾加上 hashtag / End with hashtags: #馬來西亞 #大馬油價 #RON95 #RON97 #malaysia #petrolprice
-- 日期: ${now}
-
-只輸出貼文內容，不要解釋。Output only the post content, no explanation.`;
+  // 精簡 prompt，省 token 也加快手機生成速度
+  const prompt = `用繁體中文生成一篇小紅書油價貼文。語氣活潑，含 Emoji。
+油價：RON95補貼${prices.budi95}，RON95無補貼${prices.ron95}，RON97 ${prices.ron97}，柴油西馬${prices.diesel_p}，柴油東馬${prices.diesel_em}。日期${now}。
+結尾 hashtag：#馬來西亞 #大馬油價 #RON95 #RON97 #malaysia #petrolprice
+只輸出貼文。`;
 
   try {
     const controller = new AbortController();
@@ -43,7 +30,7 @@ You are a Malaysia fuel price RedNote blogger. Generate a post in Traditional Ch
       body: JSON.stringify({
         model: "local",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 500,
+        max_tokens: 200,
         temperature: 0.7
       }),
       signal: controller.signal
