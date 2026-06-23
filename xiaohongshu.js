@@ -1,25 +1,41 @@
 async function generateXiaohongshuContent(topic, content) {
-  // Marvis 全自動本地 AI 生成，無需任何外部 API Key
+  // Marvis 全自動本地 AI 生成，零外部 API Key
+  // content 格式："RON95 (補貼Budi95): RM1.99, RON95 (無補貼): RM3.72, RON97: RM4.35, ..."
   const now = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
 
+  // 解析傳入的真實價格
+  const extract = (label) => {
+    const m = content.match(new RegExp(label + '[^:]*?:\\s*RM\\s*([\\d.]+)', 'i'));
+    return m ? `RM${m[1]}` : "—";
+  };
+
+  const budi95    = extract("補貼Budi95") || extract("補貼");
+  const ron95     = extract("無補貼");
+  const ron97     = extract("RON97");
+  const diesel_p  = extract("西馬");
+  const diesel_em = extract("東馬");
+
+  // 判斷價格變動趨勢（簡單比較，這裡示範格式）
   return `🇲🇾 大馬車主注意！本週油價出爐了！
 
 ━━━━━━━━━━━━━━━━━━
 
-⛽️ RON95：RM2.05（維持不變）
-🔥 RON97：RM3.19（維持不變）
-🚛 Diesel：RM2.15（維持不變）
+⛽️ RON95 (補貼Budi95)：${budi95}
+🛢️ RON95 (無補貼)：${ron95}
+🔥 RON97：${ron97}
+🚛 Diesel (西馬)：${diesel_p}
+🏝️ Diesel (東馬)：${diesel_em}
 
 ━━━━━━━━━━━━━━━━━━
 
 📅 更新日期：${now}
 
 💡 省錢小貼士：
-▸ 週三去 Petronas 通常人最少不用排隊
-▸ 下載 Setel app 直接在車內付款超方便
-▸ RON95 繼續維持 RM2.05，小車車主可以放心踩油門了 🚗💨
+▸ 用 Setel app 直接在車內付款，不用下車排隊
+▸ 東馬柴油只要 ${diesel_em}，西馬朋友羨慕了 😂
+▸ Budi95 補貼資格記得檢查，每公升省超多
 
-📌 每次油價調整都在星期三公佈，記得關注我第一時間更新！
+📌 每週三財政部公佈最新油價，關注我第一時間更新！
 
 ━━━━━━━━━━━━━━━━━━
 
